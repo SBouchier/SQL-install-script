@@ -9,23 +9,35 @@ Function Install-SQL2017 {
         [ValidateScript({Test-Path $_})]
         [string]$installPath,
 
+        [Parameter(Mandatory=$True)]
+        [ValidateScript({Test-Path $_})]
+        [string]$configIniPath,
+
+        [Parameter(Mandatory=$True)]
+        [ValidateScript({Test-Path $_})]
+        [string]$installSharedDir,
+
         #todo: use this + validate if it's a valid SQL version
         [Parameter(Mandatory=$True)]
         [string]$SQLversion,
+
+        [Parameter(Mandatory=$True)]
+        [string]$instanceName,
+
+        [Parameter(Mandatory=$True)]
+        [string]$instanceID,
 
         #todo: use this param
         [Parameter(Mandatory=$True)]
         [ValidateSet('SQL', 'AS', 'RS', 'RS_SHP', 'RS_SHPWFE', 'DQC', 'IS', 'MDS', 'SQL_SHARED_MPY', 'SQL_SHARED_MR', 'Tools', 'SQLENGINE', 'REPLICATION', 'FULLTEXT', 'BC','SDK')]
         [string[]]$features,
 
-        #if switch is called, user can give a password for the SQL auth
+        #if this switch is called, user can give a password for the SQL auth if they want it
         [Parameter(ParameterSetName='Auth', Mandatory=$false)]
         [switch]$SQLauthentication,
-        #[ValidateSet('WindowsAuth', 'Mixed', 'SQL')]
         [Parameter(ParameterSetName='Auth', Mandatory=$false)]
         [string]$SQLpwd
     )
-
 
     #code to format the input of features into the correct style for input (CSV/no spaces)
     $featureList
@@ -39,36 +51,80 @@ Function Install-SQL2017 {
     
     #code that handles the option for user to have either SQL auth as well as windows Auth, or just windows Auth.
     If ($SQLauthentication.IsPresent){
-        Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
+        Set-OrAddIniValue -FilePath $configIniPath  -keyValueList @{
+        #Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
             SECURITYMODE='"SQL"'
             SAPWD='"'+$SQLpwd+'"'
         }
     }
     Else{
-        Write-Host 'nope'
-        Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
+        Set-OrAddIniValue -FilePath $configIniPath  -keyValueList @{
+        #Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
             SECURITYMODE=""
             SAPWD=""
         }
     }
 
 
+
     #code that is able to modify the ConfigFile.ini to contain whatever inputs you wish before it's used below.
-    Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
-        INSTANCEID = '"SQLEXPRESS_ABC"'
+    #Set-OrAddIniValue -FilePath ".\ConfigurationFile.ini"  -keyValueList @{
+    Set-OrAddIniValue -FilePath $configIniPath  -keyValueList @{
+        INSTANCENAME = '"'+$instanceName+'"'
+        SQLSVCACCOUNT = '"'+"NT Service\MSSQL$"+$instanceName+'"'
+        SQLTELSVCACCT='"'+"NT Service\SQLTELEMETRY$"+$instanceName+'"'
+
+        INSTANCEID = '"'+$instanceID+'"'
         FEATURES=$featureList
-        INSTALLSHAREDDIR='"C:\Users\Simon\Downloads\SQLtest"'
+        INSTALLSHAREDDIR= '"'+$installSharedDir+'"'
     }
   
     #2.0: uses the ConfigFile in the same directory as this .ps1 file
+    & $SQLFilePath /v /ACTION=Install /INSTALLPATH=$installPath /LANGUAGE=en-US /CONFIGURATIONFILE=$configIniPath /IACCEPTROPENLICENSETERMS /IACCEPTSQLSERVERLICENSETERMS #/HELP=True
     #& $SQLFilePath /v /ACTION=Install /INSTALLPATH=$installPath /LANGUAGE=en-US /CONFIGURATIONFILE="ConfigurationFile.ini" /IACCEPTROPENLICENSETERMS /IACCEPTSQLSERVERLICENSETERMS #/HELP=True
     
     #1.0: a version that does not use ConfigFile.ini and attempts to pass everything via params
     #& $SQLFilePath /ACTION=Install /INSTALLPATH=$installPath /FEATURES="SQLENGINE,REPLICATION,SQL_INST_MR,FULLTEXT,CONN,BC,SDK" /INSTANCENAME=SQLEXPRESSAAA /AGTSVCACCOUNT="NT AUTHORITY\NETWORK SERVICE" /AGTSVCSTARTUPTYPE="Disabled" /SQLSVCACCOUNT="NT Service\MSSQL$SQLEXPRESS" /SQLSYSADMINACCOUNTS="BUILTIN\ADMINISTRATORS" /SECURITYMODE="SQL" /SAPWD="mypasswordhere" /IACCEPTSQLSERVERLICENSETERMS /IACCEPTROPENLICENSETERMS
-   
+
 }
 
+Function Install-SSMS {
+    [Cmdletbinding()] 
+    Param (
+        [Parameter(Mandatory=$True)]
+        [ValidateScript({Test-Path $_})]
+        [string]$ssmsPath
+    )
+    & $ssmsPath /install /passive /norestart #/HELP
+}
 
+Function CheckInstallation {
+    [Cmdletbinding()] 
+    Param (
+        [Parameter(Mandatory=$True)]
+        [string]$instanceName
+    )
+    
+    Install-Module -Name SqlServer -Scope CurrentUser
+
+    $search = "*"+$instanceName+"*"
+    Get-service $search
+
+    #Get-Module SqlServer -ListAvailable
+    #Get-SqlCredential -InputObject $serverName -Name "Test"
+    #Get-Credential
+    #Get-SqlInstance -Credential $Credential -MachineName "Computer005" -AcceptSelfSignedCertificate
+    #Get-SqlLogin -ServerInstance $instanceID
+    #$Credential = $host.ui.PromptForCredential("Need credentials", "Please enter your user name and password.", "", "NetBiosUserName")
+    #write-host $Credential
+    
+    #$conn = New-Object Microsoft.SqlServer.Management.Common.ServerConnection -ArgumentList $env:ComputerName
+    #$conn.ApplicationName = "test1"
+	#$conn.StatementTimeout = 0
+	#$conn.Connect()
+	#$smo = New-Object Microsoft.SqlServer.Management.Smo.Server -ArgumentList $conn
+    #Get-SqlInstance -Path $serverName
+}
 
 #function that takes inputs and edits the .ini with them.
 function Set-OrAddIniValue {
@@ -92,7 +148,7 @@ function Set-OrAddIniValue {
 
 
 
-Install-SQL2017 -SQLFilePath C:\Users\Simon\Downloads\SQLTest\SQLServer2017-SSEI-Expr.exe -installPath D:\SQL -SQLversion 'Basic' -features 'SQL','FULLTEXT','BC','SDK' -SQLauthentication -SQLpwd 'test'
+#Install-SQL2017 -SQLFilePath C:\Users\Simon\Downloads\SQLTest\SQLServer2017-SSEI-Expr.exe -installPath D:\SQL -SQLversion 'Basic' -features 'SQL','FULLTEXT','BC','SDK' -SQLauthentication -SQLpwd 'test'
 #Install-SQL2017 -SQLFilePath C:\Users\Simon\Downloads\SQLTest\SQLServer2017-SSEI-Expr.exe -installPath D:\SQL -SQLversion 'Basic' -features 'SQL','FULLTEXT','BC','SDK'
 
 #link to Documentation listing SQL cmdline install params:
