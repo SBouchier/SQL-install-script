@@ -21,7 +21,6 @@ Function Install-SQL2017 {
         [ValidateScript({Test-Path -Path $_ -PathType Container -IsValid})]
         [string]$InstallSharedDir,
 
-        #todo: use this + validate if it's a valid SQL version
         [Parameter(Mandatory=$True)]
         [string]$SQLVersion,
 
@@ -32,7 +31,7 @@ Function Install-SQL2017 {
         [string]$InstanceID,
 
         [Parameter(Mandatory=$True)]
-        [ValidateSet('SQL', 'BROWSER', 'WRITER', 'AS', 'RS', 'ADVANCEDANALYTICS', 'SQL_INST_MR', 'SQL_INST_MPY', 'CONN', 'LOCALDB', 'RS_SHP', 'RS_SHPWFE', 'DQC', 'IS', 'MDS', 'SQL_SHARED_MPY', 'SQL_SHARED_MR', 'Tools', 'SQLENGINE', 'REPLICATION', 'FULLTEXT', 'BC','SDK')]
+        [ValidateSet('SQLENGINE','REPLICATION','ADVANCEDANALYTICS','SQL_INST_MR','SQL_INST_MPY','FULLTEXT','CONN','BC','SDK','LOCALDB','BROWSER','WRITER')]
         [string[]]$Features,
 
         #if this switch is called, user can give a password for the SQL auth if they want it
@@ -80,13 +79,9 @@ Function Install-SQL2017 {
     }
   
     #2.0: uses the ConfigFile in the same directory as this .ps1 file
-    #& $SQLFilePath /v /ACTION=Install /INSTALLPATH=$InstallPath /LANGUAGE=en-US /CONFIGURATIONFILE=$ConfigIniPath /IACCEPTROPENLICENSETERMS /IACCEPTSQLSERVERLICENSETERMS #/HELP=True
     $output = Start-Process $SQLFilePath -ArgumentList "/ACTION=Install /INSTANCENAME=$InstanceName /INSTANCEDIR=$InstallPath /CONFIGURATIONFILE=$ConfigIniPath /USEMICROSOFTUPDATE /IACCEPTROPENLICENSETERMS /IACCEPTSQLSERVERLICENSETERMS /IACCEPTPYTHONLICENSETERMS" -PassThru -Verb runAs
 
     $output
-    
-    #1.0: a version that does not use ConfigFile.ini and attempts to pass everything via params
-    #& $SQLFilePath /ACTION=Install /INSTALLPATH=$installPath /FEATURES="SQLENGINE,REPLICATION,SQL_INST_MR,FULLTEXT,CONN,BC,SDK" /INSTANCENAME=SQLEXPRESSAAA /AGTSVCACCOUNT="NT AUTHORITY\NETWORK SERVICE" /AGTSVCSTARTUPTYPE="Disabled" /SQLSVCACCOUNT="NT Service\MSSQL$SQLEXPRESS" /SQLSYSADMINACCOUNTS="BUILTIN\ADMINISTRATORS" /SECURITYMODE="SQL" /SAPWD="mypasswordhere" /IACCEPTSQLSERVERLICENSETERMS /IACCEPTROPENLICENSETERMS
 }
 
 
