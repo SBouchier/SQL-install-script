@@ -14,6 +14,7 @@ ExampleSQL2017 - Installs SQL2017 onto your machine. Params:
 -Features: Which features you want enabled for the instance
 (Optional) -SQLauthentication: A switch to set up SQL authentication for the instance, if used
 (Optional) -SQLpwd: The password for the SQL authentication, only if enabled above
+(Optional) -FindInstall: A switch that will run a post install check to see if an active process exists for the new server.
 
 ---
 ExampleSSMS - Installs SSMS onto your machine. Params:
